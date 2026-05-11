@@ -61,23 +61,31 @@ function requestModal() {
     );
 }
 
+function configuredFunctionalRoles() {
+  return optional("FUNCTIONAL_ROLES")
+    .split(",")
+    .map(item => {
+      const [label, id] = item.split(":").map(part => part?.trim());
+      if (!label || !id || id.includes("ID_DO_")) return null;
+      return { label, id };
+    })
+    .filter(Boolean);
+}
+
 async function roleSelectPayload(guild) {
   await guild.roles.fetch();
-  const allowedRoleIds = optional("ALLOWED_ROLE_IDS")
-    .split(",")
-    .map(item => item.trim())
-    .filter(Boolean);
+  const configured = configuredFunctionalRoles();
+  const roles = configured
+    .map(item => ({ ...item, role: guild.roles.cache.get(item.id) }))
+    .filter(item => item.role && !item.role.managed && item.role.id !== guild.id);
 
-  const roles = guild.roles.cache
-    .filter(role => {
-      if (role.id === guild.id || role.managed) return false;
-      if (allowedRoleIds.length) return allowedRoleIds.includes(role.id);
-      return role.editable;
-    })
-    .sort((a, b) => b.position - a.position)
-    .first(25);
-
-  if (!roles.length) return null;
+  if (!roles.length) {
+    return {
+      content: "Nenhum cargo configurado. No Render, preencha FUNCTIONAL_ROLES assim: `AGENTE DHPP:id,AGENTE GER:id,AGENTE PCESP:id`.",
+      ephemeral: true,
+      components: []
+    };
+  }
 
   return {
     content: "Escolha o cargo que deseja receber:",
@@ -86,10 +94,10 @@ async function roleSelectPayload(guild) {
       new StringSelectMenuBuilder()
         .setCustomId("funcional:role-select")
         .setPlaceholder("Selecionar cargo")
-        .addOptions(roles.map(role => ({
-          label: role.name.slice(0, 100),
-          value: role.id,
-          description: `Setar ${role.name}`.slice(0, 100)
+        .addOptions(roles.slice(0, 25).map(item => ({
+          label: item.label.slice(0, 100),
+          value: item.role.id,
+          description: `Setar ${item.label}`.slice(0, 100)
         })))
     )]
   };
@@ -194,10 +202,6 @@ client.on(Events.InteractionCreate, async interaction => {
 
       if (action === "roles") {
         const payload = await roleSelectPayload(interaction.guild);
-        if (!payload) {
-          await interaction.reply({ content: "Nenhum cargo disponível para o bot setar. Verifique a posição do cargo do bot ou configure ALLOWED_ROLE_IDS.", ephemeral: true });
-          return;
-        }
         await interaction.reply(payload);
         return;
       }
@@ -292,12 +296,9 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
-      const allowedRoleIds = optional("ALLOWED_ROLE_IDS")
-        .split(",")
-        .map(item => item.trim())
-        .filter(Boolean);
-      if (allowedRoleIds.length && !allowedRoleIds.includes(role.id)) {
-        await interaction.reply({ content: "Esse cargo não está liberado para seleção automática.", ephemeral: true });
+      const configured = configuredFunctionalRoles();
+      if (!configured.some(item => item.id === role.id)) {
+        await interaction.reply({ content: "Esse cargo não está configurado para funcional.", ephemeral: true });
         return;
       }
 

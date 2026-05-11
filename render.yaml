@@ -22,7 +22,7 @@ services:
         sync: false
       - key: FUNCIONAL_ROLE_ID
         sync: false
-      - key: ALLOWED_ROLE_IDS
+      - key: FUNCTIONAL_ROLES
         sync: false
       - key: LOG_CHANNEL_ID
         sync: false
