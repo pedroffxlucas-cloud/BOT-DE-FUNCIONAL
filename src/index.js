@@ -9,7 +9,6 @@ const {
   GatewayIntentBits,
   ModalBuilder,
   PermissionFlagsBits,
-  StringSelectMenuBuilder,
   TextInputBuilder,
   TextInputStyle
 } = require("discord.js");
@@ -84,6 +83,13 @@ function requestModal() {
         .setMaxLength(3)
         .setStyle(TextInputStyle.Short)),
       new ActionRowBuilder().addComponents(new TextInputBuilder()
+        .setCustomId("roleLabel")
+        .setLabel("Qual funcional deseja?")
+        .setPlaceholder("AGENTE DHPP, AGENTE GER ou AGENTE PCESP")
+        .setRequired(true)
+        .setMaxLength(40)
+        .setStyle(TextInputStyle.Short)),
+      new ActionRowBuilder().addComponents(new TextInputBuilder()
         .setCustomId("authorizedBy")
         .setLabel("Quem autorizou sua funcional?")
         .setPlaceholder("Nome do delegado/responsável")
@@ -104,36 +110,6 @@ function denyModal(id) {
       .setRequired(true)
       .setMaxLength(500)
       .setStyle(TextInputStyle.Paragraph)));
-}
-
-async function roleSelectPayload(guild) {
-  await guild.roles.fetch();
-  const roles = configuredFunctionalRoles()
-    .map(item => ({ ...item, role: guild.roles.cache.get(item.id) }))
-    .filter(item => item.role && !item.role.managed && item.role.id !== guild.id);
-
-  if (!roles.length) {
-    return {
-      content: "Nenhum cargo configurado. No Render, preencha FUNCTIONAL_ROLES assim: `AGENTE DHPP:id,AGENTE GER:id,AGENTE PCESP:id`.",
-      ephemeral: true,
-      components: []
-    };
-  }
-
-  return {
-    content: "Escolha o cargo que deseja receber:",
-    ephemeral: true,
-    components: [new ActionRowBuilder().addComponents(
-      new StringSelectMenuBuilder()
-        .setCustomId("funcional:role-select")
-        .setPlaceholder("Selecionar cargo")
-        .addOptions(roles.slice(0, 25).map(item => ({
-          label: item.label.slice(0, 100),
-          value: item.role.id,
-          description: `Setar ${item.label}`.slice(0, 100)
-        })))
-    )]
-  };
 }
 
 async function dm(userId, content) {
@@ -234,7 +210,10 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (action === "roles") {
-        await interaction.reply(await roleSelectPayload(interaction.guild));
+        await interaction.reply({
+          content: "A escolha da funcional agora fica dentro do formulário **Pedir funcional**.",
+          ephemeral: true
+        });
         return;
       }
 
@@ -265,7 +244,8 @@ client.on(Events.InteractionCreate, async interaction => {
           reviewReason: "Aprovado pelo delegado"
         });
 
-        const roleId = optional("FUNCIONAL_ROLE_ID");
+        const requestedRole = configuredFunctionalRoles().find(item => item.label.toUpperCase() === String(request.roleLabel || "").toUpperCase());
+        const roleId = requestedRole?.id || optional("FUNCIONAL_ROLE_ID");
         if (roleId) {
           const member = await interaction.guild.members.fetch(request.userId).catch(() => null);
           if (member) await member.roles.add(roleId).catch(error => console.error("Erro ao entregar FUNCIONAL_ROLE_ID:", error));
@@ -277,7 +257,8 @@ client.on(Events.InteractionCreate, async interaction => {
           .setDescription(`Pedido **${updated.id}** aprovado por <@${interaction.user.id}>.`)
           .addFields(
             { name: "Personagem", value: updated.characterName, inline: true },
-            { name: "Passaporte/ID", value: updated.passport, inline: true }
+            { name: "Passaporte/ID", value: updated.passport, inline: true },
+            { name: "Funcional", value: updated.roleLabel || "Não informado", inline: true }
           )
           .setTimestamp();
 
@@ -297,6 +278,7 @@ client.on(Events.InteractionCreate, async interaction => {
           passport: interaction.fields.getTextInputValue("passport").replace(/\D/g, "").slice(0, 10),
           characterName: interaction.fields.getTextInputValue("characterName").trim(),
           age: interaction.fields.getTextInputValue("age").replace(/\D/g, "").slice(0, 3),
+          roleLabel: interaction.fields.getTextInputValue("roleLabel").trim().toUpperCase(),
           authorizedBy: interaction.fields.getTextInputValue("authorizedBy").trim(),
           status: "Pendente",
           createdAt: new Date().toISOString()
@@ -345,41 +327,6 @@ client.on(Events.InteractionCreate, async interaction => {
         await log(interaction.guild, embed);
       }
       return;
-    }
-
-    if (interaction.isStringSelectMenu()) {
-      if (interaction.customId !== "funcional:role-select") return;
-
-      const roleId = interaction.values[0];
-      const role = await interaction.guild.roles.fetch(roleId).catch(() => null);
-      if (!role || role.managed || role.id === interaction.guild.id) {
-        await interaction.reply({ content: "Cargo inválido ou indisponível.", ephemeral: true });
-        return;
-      }
-
-      if (!configuredFunctionalRoles().some(item => item.id === role.id)) {
-        await interaction.reply({ content: "Esse cargo não está configurado para funcional.", ephemeral: true });
-        return;
-      }
-
-      const member = interaction.member;
-      if (!member) {
-        await interaction.reply({ content: "Não consegui localizar seu usuário no servidor.", ephemeral: true });
-        return;
-      }
-
-      try {
-        await member.roles.add(role);
-      } catch (error) {
-        console.error("Erro ao setar cargo:", error);
-        await interaction.reply({
-          content: `Não consegui setar esse cargo.\nMotivo: \`${publicError(error)}\`\nConfira se o cargo do bot está acima desse cargo e se ele tem permissão **Gerenciar Cargos**.`,
-          ephemeral: true
-        });
-        return;
-      }
-
-      await interaction.reply({ content: `Cargo ${role} setado com sucesso.`, ephemeral: true });
     }
   } catch (error) {
     console.error(error);
