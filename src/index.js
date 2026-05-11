@@ -5,7 +5,6 @@ const {
   Client,
   EmbedBuilder,
   Events,
-  GatewayIntentBits,
   ModalBuilder,
   PermissionFlagsBits,
   TextInputBuilder,
@@ -84,7 +83,7 @@ async function log(guild, embed) {
   if (channel?.isTextBased()) await channel.send({ embeds: [embed] });
 }
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
+const client = new Client({ intents: [] });
 
 client.once(Events.ClientReady, bot => {
   console.log(`Bot online como ${bot.user.tag}`);
