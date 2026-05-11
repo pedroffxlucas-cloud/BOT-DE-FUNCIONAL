@@ -46,10 +46,14 @@ function canReview(member) {
 }
 
 function configuredFunctionalRoles() {
+  const fallbackLabels = ["DHPP", "GER", "PCESP"];
   return optional("FUNCTIONAL_ROLES")
     .split(",")
-    .map(item => {
-      const [label, id] = item.split(":").map(part => part?.trim());
+    .map((item, index) => {
+      const clean = item.trim();
+      if (!clean) return null;
+      const parts = clean.includes(":") ? clean.split(":") : [fallbackLabels[index], clean];
+      const [label, id] = parts.map(part => part?.trim());
       if (!label || !id || id.includes("ID_DO_")) return null;
       return { label, id };
     })
@@ -104,9 +108,12 @@ async function roleAccessReport(guild) {
 async function resolveRequestedRole(guild, roleLabel) {
   const label = normalizeRoleLabel(roleLabel);
   const configured = configuredFunctionalRoles();
-  const found = configured.find(item => normalizeRoleLabel(item.label) === label);
+  const found = configured.find(item => {
+    const configuredLabel = normalizeRoleLabel(item.label);
+    return configuredLabel === label || configuredLabel === `AGENTE ${label}` || normalizeRoleLabel(`AGENTE ${configuredLabel}`) === label;
+  });
   if (!found) {
-    const valid = configured.map(item => item.label).join(", ") || "nenhuma funcional configurada";
+    const valid = configured.map(item => item.label).join(", ") || "nenhuma funcional configurada. Confira se FUNCTIONAL_ROLES está no Render e se o serviço foi redeployado.";
     throw new Error(`Funcional "${roleLabel}" não configurada. Use uma destas: ${valid}`);
   }
 

@@ -26,14 +26,14 @@ npm.cmd start
 - `PANEL_CHANNEL_ID`: canal onde o embed do painel de funcional sera publicado.
 - `DELEGADO_ROLE_ID`: cargo que aprova/reprova, opcional se a pessoa tiver Gerenciar Servidor.
 - `FUNCIONAL_ROLE_ID`: cargo dado automaticamente ao aprovado, opcional.
-- `FUNCTIONAL_ROLES`: funcionais/cargos aceitos no formulário, no formato `AGENTE DHPP:id,AGENTE GER:id,AGENTE PCESP:id`.
+- `FUNCTIONAL_ROLES`: funcionais/cargos aceitos no formulário, no formato `DHPP:id,GER:id,PCESP:id`.
 - `LOG_CHANNEL_ID`: canal de logs, opcional.
 
 Use `/painel-funcional` para enviar o painel no Discord.
 
 Com `PANEL_CHANNEL_ID` configurado, o comando pode ser usado em qualquer canal administrativo e o bot publica o painel automaticamente no canal correto.
 
-No formulário, o usuário informa a funcional desejada, por exemplo `AGENTE DHPP`. Se ela existir em `FUNCTIONAL_ROLES`, o bot entrega o cargo automaticamente quando o pedido for aprovado. O cargo do bot precisa estar acima dos cargos que ele vai setar e o bot precisa da permissão `Gerenciar Cargos`.
+No formulário, o usuário informa a funcional desejada, por exemplo `DHPP`. Se ela existir em `FUNCTIONAL_ROLES`, o bot entrega o cargo automaticamente quando o pedido for aprovado. O cargo do bot precisa estar acima dos cargos que ele vai setar e o bot precisa da permissão `Gerenciar Cargos`.
 
 Use `/diagnostico-cargos` no Discord para o bot dizer se consegue setar cada cargo configurado.
 
