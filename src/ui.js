@@ -8,22 +8,16 @@ function optionalUrl(name) {
 
 function panelPayload() {
   const title = process.env.PANEL_TITLE || "Painel de Funcional";
-  const org = process.env.PANEL_ORG || "Departamento Civil da Cidade";
+  const org = process.env.PANEL_ORG || "Delegacia da Polícia Civil do Estado de São Paulo";
 
   const embed = new EmbedBuilder()
     .setColor(0x0f8f4a)
     .setAuthor({ name: `${org} APP` })
     .setTitle(title.toUpperCase())
     .setDescription([
-      "Solicite sua funcional atraves do painel.",
-      "Clique no botao abaixo, preencha o formulario e aguarde a analise do delegado civil.",
-      "",
-      "**Aviso:** formulario ficticio para jogo/servidor privado. Nao envie senha, documento real ou informacao confidencial."
+      "Solicite sua funcional através do painel.",
+      "Clique no botão abaixo e comece sua jornada dentro da corporação."
     ].join("\n"))
-    .addFields(
-      { name: "Canal de analise", value: "O pedido sera enviado automaticamente para o canal do delegado.", inline: false },
-      { name: "Resultado", value: "Aprovado ou reprovado por botoes no painel administrativo.", inline: false }
-    )
     .setFooter({ text: "Funcional sem validade real - uso imersivo" })
     .setTimestamp();
 
@@ -49,15 +43,15 @@ function panelPayload() {
 function approvalPayload(request) {
   const embed = new EmbedBuilder()
     .setColor(0xf1c40f)
-    .setTitle("Nova solicitacao de funcional")
+    .setTitle("Nova solicitação de funcional")
     .setDescription("O delegado pode aprovar ou reprovar abaixo.")
     .addFields(
       { name: "Solicitante", value: `<@${request.userId}>`, inline: true },
       { name: "Passaporte/ID", value: request.passport, inline: true },
       { name: "Nome", value: request.characterName, inline: true },
       { name: "Idade", value: request.age, inline: true },
-      { name: "Contato", value: request.phone || "Nao informado", inline: true },
-      { name: "Motivo", value: request.reason || "Nao informado" }
+      { name: "Contato", value: request.phone || "Não informado", inline: true },
+      { name: "Motivo", value: request.reason || "Não informado" }
     )
     .setFooter({ text: request.id })
     .setTimestamp(new Date(request.createdAt));

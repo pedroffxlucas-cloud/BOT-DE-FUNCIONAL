@@ -4,11 +4,11 @@ function commandPayload() {
   return [
     new SlashCommandBuilder()
       .setName("painel-funcional")
-      .setDescription("Envia o painel de solicitacao de funcional.")
+      .setDescription("Envia o painel de solicitação de funcional.")
       .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
     new SlashCommandBuilder()
       .setName("minha-funcional")
-      .setDescription("Mostra o status do seu ultimo pedido.")
+      .setDescription("Mostra o status do seu último pedido.")
   ].map(command => command.toJSON());
 }
 

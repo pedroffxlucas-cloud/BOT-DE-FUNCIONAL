@@ -35,4 +35,4 @@ services:
       - key: PANEL_TITLE
         value: Painel de Funcional
       - key: PANEL_ORG
-        value: Departamento Civil da Cidade
+        value: Delegacia da Polícia Civil do Estado de São Paulo

@@ -58,7 +58,7 @@ function requestModal() {
         .setCustomId("phone").setLabel("Telefone/contato").setPlaceholder("Ex.: 555-0100")
         .setRequired(false).setMaxLength(25).setStyle(TextInputStyle.Short)),
       new ActionRowBuilder().addComponents(new TextInputBuilder()
-        .setCustomId("reason").setLabel("Por que quer a funcional?").setPlaceholder("Fale sua area, experiencia ou motivo")
+        .setCustomId("reason").setLabel("Por que quer a funcional?").setPlaceholder("Fale sua área, experiência ou motivo")
         .setRequired(false).setMaxLength(500).setStyle(TextInputStyle.Paragraph))
     );
 }
@@ -68,7 +68,7 @@ function denyModal(id) {
     .setCustomId(`funcional:deny-submit:${id}`)
     .setTitle("Reprovar funcional")
     .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder()
-      .setCustomId("reason").setLabel("Motivo da reprovacao").setPlaceholder("Explique o motivo")
+      .setCustomId("reason").setLabel("Motivo da reprovação").setPlaceholder("Explique o motivo")
       .setRequired(true).setMaxLength(500).setStyle(TextInputStyle.Paragraph)));
 }
 
@@ -129,7 +129,7 @@ client.on(Events.InteractionCreate, async interaction => {
         if (panelChannelId) {
           const channel = await interaction.guild.channels.fetch(panelChannelId).catch(() => null);
           if (!channel?.isTextBased()) {
-            await interaction.reply({ content: "Canal do painel nao encontrado. Confira PANEL_CHANNEL_ID.", ephemeral: true });
+            await interaction.reply({ content: "Canal do painel não encontrado. Confira PANEL_CHANNEL_ID.", ephemeral: true });
             return;
           }
           await channel.send(panelPayload());
@@ -144,7 +144,7 @@ client.on(Events.InteractionCreate, async interaction => {
       if (interaction.commandName === "minha-funcional") {
         const request = await findLatestByUser(interaction.user.id);
         await interaction.reply({
-          content: request ? `Pedido **${request.id}** | Status: **${request.status}**${request.reviewReason ? `\nMotivo: ${request.reviewReason}` : ""}` : "Voce ainda nao tem pedido registrado.",
+          content: request ? `Pedido **${request.id}** | Status: **${request.status}**${request.reviewReason ? `\nMotivo: ${request.reviewReason}` : ""}` : "Você ainda não tem pedido registrado.",
           ephemeral: true
         });
         return;
@@ -176,7 +176,7 @@ client.on(Events.InteractionCreate, async interaction => {
         }
         const request = await findRequest(id);
         if (!request || request.status !== "Pendente") {
-          await interaction.reply({ content: "Pedido inexistente ou ja analisado.", ephemeral: true });
+          await interaction.reply({ content: "Pedido inexistente ou já analisado.", ephemeral: true });
           return;
         }
 
@@ -213,7 +213,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
         const channel = await interaction.guild.channels.fetch(cfg("APPROVAL_CHANNEL_ID")).catch(() => null);
         if (!channel?.isTextBased()) {
-          await interaction.reply({ content: "Canal de aprovacao nao encontrado.", ephemeral: true });
+          await interaction.reply({ content: "Canal de aprovação não encontrado.", ephemeral: true });
           return;
         }
         const message = await channel.send(approvalPayload(request));
@@ -226,7 +226,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const id = interaction.customId.split(":")[2];
         const request = await findRequest(id);
         if (!request || request.status !== "Pendente") {
-          await interaction.reply({ content: "Pedido inexistente ou ja analisado.", ephemeral: true });
+          await interaction.reply({ content: "Pedido inexistente ou já analisado.", ephemeral: true });
           return;
         }
         const reason = interaction.fields.getTextInputValue("reason").trim();
