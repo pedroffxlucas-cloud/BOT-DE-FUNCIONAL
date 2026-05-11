@@ -1,0 +1,38 @@
+services:
+  - type: worker
+    name: funcional-rp-bot
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 24.15.0
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: CLIENT_ID
+        sync: false
+      - key: GUILD_ID
+        sync: false
+      - key: APPROVAL_CHANNEL_ID
+        sync: false
+      - key: PANEL_CHANNEL_ID
+        value: "1466546572572495974"
+      - key: DELEGADO_ROLE_ID
+        sync: false
+      - key: FUNCIONAL_ROLE_ID
+        sync: false
+      - key: LOG_CHANNEL_ID
+        sync: false
+      - key: DUVIDAS_URL
+        sync: false
+      - key: CORREGEDORIA_URL
+        sync: false
+      - key: RH_URL
+        sync: false
+      - key: ASCOM_URL
+        sync: false
+      - key: PANEL_TITLE
+        value: Painel de Funcional
+      - key: PANEL_ORG
+        value: Departamento Civil da Cidade
