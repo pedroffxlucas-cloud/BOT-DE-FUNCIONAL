@@ -34,7 +34,8 @@ function panelPayload() {
   const components = [];
   if (links.length) components.push(new ActionRowBuilder().addComponents(...links));
   components.push(new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId("funcional:open").setLabel("Pedir funcional").setStyle(ButtonStyle.Success)
+    new ButtonBuilder().setCustomId("funcional:open").setLabel("Pedir funcional").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId("funcional:roles").setLabel("Escolher cargo").setStyle(ButtonStyle.Secondary)
   ));
 
   return { embeds: [embed], components };
@@ -50,8 +51,7 @@ function approvalPayload(request) {
       { name: "Passaporte/ID", value: request.passport, inline: true },
       { name: "Nome", value: request.characterName, inline: true },
       { name: "Idade", value: request.age, inline: true },
-      { name: "Contato", value: request.phone || "Não informado", inline: true },
-      { name: "Motivo", value: request.reason || "Não informado" }
+      { name: "Autorizado por", value: request.authorizedBy || "Não informado", inline: true }
     )
     .setFooter({ text: request.id })
     .setTimestamp(new Date(request.createdAt));

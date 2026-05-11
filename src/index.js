@@ -8,6 +8,7 @@ const {
   Events,
   ModalBuilder,
   PermissionFlagsBits,
+  StringSelectMenuBuilder,
   TextInputBuilder,
   TextInputStyle
 } = require("discord.js");
@@ -55,12 +56,43 @@ function requestModal() {
         .setCustomId("age").setLabel("Idade do personagem").setPlaceholder("32")
         .setRequired(true).setMaxLength(3).setStyle(TextInputStyle.Short)),
       new ActionRowBuilder().addComponents(new TextInputBuilder()
-        .setCustomId("phone").setLabel("Telefone/contato").setPlaceholder("Ex.: 555-0100")
-        .setRequired(false).setMaxLength(25).setStyle(TextInputStyle.Short)),
-      new ActionRowBuilder().addComponents(new TextInputBuilder()
-        .setCustomId("reason").setLabel("Por que quer a funcional?").setPlaceholder("Fale sua área, experiência ou motivo")
-        .setRequired(false).setMaxLength(500).setStyle(TextInputStyle.Paragraph))
+        .setCustomId("authorizedBy").setLabel("Quem autorizou sua funcional?").setPlaceholder("Nome do delegado/responsável")
+        .setRequired(true).setMaxLength(60).setStyle(TextInputStyle.Short))
     );
+}
+
+async function roleSelectPayload(guild) {
+  await guild.roles.fetch();
+  const allowedRoleIds = optional("ALLOWED_ROLE_IDS")
+    .split(",")
+    .map(item => item.trim())
+    .filter(Boolean);
+
+  const roles = guild.roles.cache
+    .filter(role => {
+      if (role.id === guild.id || role.managed) return false;
+      if (allowedRoleIds.length) return allowedRoleIds.includes(role.id);
+      return role.editable;
+    })
+    .sort((a, b) => b.position - a.position)
+    .first(25);
+
+  if (!roles.length) return null;
+
+  return {
+    content: "Escolha o cargo que deseja receber:",
+    ephemeral: true,
+    components: [new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId("funcional:role-select")
+        .setPlaceholder("Selecionar cargo")
+        .addOptions(roles.map(role => ({
+          label: role.name.slice(0, 100),
+          value: role.id,
+          description: `Setar ${role.name}`.slice(0, 100)
+        })))
+    )]
+  };
 }
 
 function denyModal(id) {
@@ -160,6 +192,16 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
+      if (action === "roles") {
+        const payload = await roleSelectPayload(interaction.guild);
+        if (!payload) {
+          await interaction.reply({ content: "Nenhum cargo disponível para o bot setar. Verifique a posição do cargo do bot ou configure ALLOWED_ROLE_IDS.", ephemeral: true });
+          return;
+        }
+        await interaction.reply(payload);
+        return;
+      }
+
       if (action === "deny") {
         if (!canReview(interaction.member)) {
           await interaction.reply({ content: "Apenas delegado/cargo autorizado pode reprovar.", ephemeral: true });
@@ -205,8 +247,7 @@ client.on(Events.InteractionCreate, async interaction => {
           passport: interaction.fields.getTextInputValue("passport").replace(/\D/g, "").slice(0, 10),
           characterName: interaction.fields.getTextInputValue("characterName").trim(),
           age: interaction.fields.getTextInputValue("age").replace(/\D/g, "").slice(0, 3),
-          phone: interaction.fields.getTextInputValue("phone")?.trim() || "",
-          reason: interaction.fields.getTextInputValue("reason")?.trim() || "",
+          authorizedBy: interaction.fields.getTextInputValue("authorizedBy").trim(),
           status: "Pendente",
           createdAt: new Date().toISOString()
         });
@@ -240,6 +281,38 @@ client.on(Events.InteractionCreate, async interaction => {
         await dm(request.userId, `Sua funcional foi **reprovada**. Pedido: ${updated.id}\nMotivo: ${reason}`);
         await log(interaction.guild, embed);
       }
+    }
+
+    if (interaction.isStringSelectMenu()) {
+      if (interaction.customId !== "funcional:role-select") return;
+      const roleId = interaction.values[0];
+      const role = await interaction.guild.roles.fetch(roleId).catch(() => null);
+      if (!role || role.managed || role.id === interaction.guild.id) {
+        await interaction.reply({ content: "Cargo inválido ou indisponível.", ephemeral: true });
+        return;
+      }
+
+      const allowedRoleIds = optional("ALLOWED_ROLE_IDS")
+        .split(",")
+        .map(item => item.trim())
+        .filter(Boolean);
+      if (allowedRoleIds.length && !allowedRoleIds.includes(role.id)) {
+        await interaction.reply({ content: "Esse cargo não está liberado para seleção automática.", ephemeral: true });
+        return;
+      }
+
+      const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+      if (!member) {
+        await interaction.reply({ content: "Não consegui localizar seu usuário no servidor.", ephemeral: true });
+        return;
+      }
+
+      await member.roles.add(role).catch(async () => {
+        await interaction.reply({ content: "Não consegui setar esse cargo. Deixe o cargo do bot acima dele e dê permissão de Gerenciar Cargos.", ephemeral: true });
+      });
+
+      if (interaction.replied) return;
+      await interaction.reply({ content: `Cargo ${role} setado com sucesso.`, ephemeral: true });
     }
   } catch (error) {
     console.error(error);

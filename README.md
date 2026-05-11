@@ -26,11 +26,14 @@ npm.cmd start
 - `PANEL_CHANNEL_ID`: canal onde o embed do painel de funcional sera publicado.
 - `DELEGADO_ROLE_ID`: cargo que aprova/reprova, opcional se a pessoa tiver Gerenciar Servidor.
 - `FUNCIONAL_ROLE_ID`: cargo dado automaticamente ao aprovado, opcional.
+- `ALLOWED_ROLE_IDS`: lista opcional de cargos liberados no botão `Escolher cargo`, separados por vírgula. Se ficar vazio, o bot mostra até 25 cargos que ele consegue gerenciar.
 - `LOG_CHANNEL_ID`: canal de logs, opcional.
 
 Use `/painel-funcional` para enviar o painel no Discord.
 
 Com `PANEL_CHANNEL_ID` configurado, o comando pode ser usado em qualquer canal administrativo e o bot publica o painel automaticamente no canal correto.
+
+Para o botão `Escolher cargo` funcionar, o cargo do bot precisa estar acima dos cargos que ele vai setar e o bot precisa da permissão `Gerenciar Cargos`.
 
 ## Subir no Render
 
