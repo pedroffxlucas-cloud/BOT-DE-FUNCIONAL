@@ -35,6 +35,17 @@ Com `PANEL_CHANNEL_ID` configurado, o comando pode ser usado em qualquer canal a
 
 No formulário, o usuário informa a funcional desejada, por exemplo `AGENTE DHPP`. Se ela existir em `FUNCTIONAL_ROLES`, o bot entrega o cargo automaticamente quando o pedido for aprovado. O cargo do bot precisa estar acima dos cargos que ele vai setar e o bot precisa da permissão `Gerenciar Cargos`.
 
+Use `/diagnostico-cargos` no Discord para o bot dizer se consegue setar cada cargo configurado.
+
+Permissões necessárias no invite/configuração do bot:
+
+- Ver canais
+- Enviar mensagens
+- Usar comandos de aplicativo
+- Gerenciar cargos
+
+No Discord, arraste o cargo do bot para ficar acima de `AGENTE DHPP`, `AGENTE GER` e `AGENTE PCESP`. Sem isso, o Discord bloqueia a entrega do cargo mesmo que o código esteja certo.
+
 ## Subir no Render
 
 O bot deve ser criado como `Background Worker`, porque ele fica conectado ao Discord e nao precisa abrir uma porta HTTP.

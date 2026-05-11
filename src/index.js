@@ -56,6 +56,66 @@ function configuredFunctionalRoles() {
     .filter(Boolean);
 }
 
+function normalizeRoleLabel(value) {
+  return String(value || "").trim().toUpperCase();
+}
+
+async function roleAccessReport(guild) {
+  await guild.roles.fetch();
+  const botMember = guild.members.me || await guild.members.fetchMe().catch(() => null);
+  const configured = configuredFunctionalRoles();
+
+  if (!configured.length) {
+    return {
+      ok: false,
+      lines: ["Nenhuma funcional configurada em FUNCTIONAL_ROLES."]
+    };
+  }
+
+  const hasManageRoles = Boolean(botMember?.permissions.has(PermissionFlagsBits.ManageRoles));
+  const lines = [
+    `Permissão Gerenciar Cargos: ${hasManageRoles ? "OK" : "FALTA"}`,
+    `Cargo mais alto do bot: ${botMember?.roles.highest?.name || "não localizado"}`
+  ];
+
+  let ok = hasManageRoles && Boolean(botMember);
+  for (const item of configured) {
+    const role = guild.roles.cache.get(item.id);
+    if (!role) {
+      lines.push(`${item.label}: cargo não encontrado (${item.id})`);
+      ok = false;
+      continue;
+    }
+
+    if (role.managed || role.id === guild.id) {
+      lines.push(`${item.label}: cargo inválido/gerenciado`);
+      ok = false;
+      continue;
+    }
+
+    const editable = Boolean(role.editable);
+    lines.push(`${item.label}: ${role.name} | ${editable ? "OK para setar" : "bot abaixo do cargo ou sem permissão"}`);
+    if (!editable) ok = false;
+  }
+
+  return { ok, lines };
+}
+
+async function resolveRequestedRole(guild, roleLabel) {
+  const label = normalizeRoleLabel(roleLabel);
+  const configured = configuredFunctionalRoles();
+  const found = configured.find(item => normalizeRoleLabel(item.label) === label);
+  if (!found) {
+    const valid = configured.map(item => item.label).join(", ") || "nenhuma funcional configurada";
+    throw new Error(`Funcional "${roleLabel}" não configurada. Use uma destas: ${valid}`);
+  }
+
+  const role = await guild.roles.fetch(found.id).catch(() => null);
+  if (!role) throw new Error(`Cargo da funcional "${found.label}" não encontrado. Confira FUNCTIONAL_ROLES.`);
+  if (!role.editable) throw new Error(`Não consigo setar "${role.name}". Coloque o cargo do bot acima dele e dê permissão Gerenciar Cargos.`);
+  return role;
+}
+
 function requestModal() {
   return new ModalBuilder()
     .setCustomId("funcional:submit")
@@ -197,6 +257,14 @@ client.on(Events.InteractionCreate, async interaction => {
           ephemeral: true
         });
       }
+
+      if (interaction.commandName === "diagnostico-cargos") {
+        const report = await roleAccessReport(interaction.guild);
+        await interaction.reply({
+          content: `Diagnóstico de cargos: **${report.ok ? "OK" : "PRECISA AJUSTAR"}**\n${report.lines.map(line => `- ${line}`).join("\n")}`,
+          ephemeral: true
+        });
+      }
       return;
     }
 
@@ -244,12 +312,13 @@ client.on(Events.InteractionCreate, async interaction => {
           reviewReason: "Aprovado pelo delegado"
         });
 
-        const requestedRole = configuredFunctionalRoles().find(item => item.label.toUpperCase() === String(request.roleLabel || "").toUpperCase());
-        const roleId = requestedRole?.id || optional("FUNCIONAL_ROLE_ID");
-        if (roleId) {
-          const member = await interaction.guild.members.fetch(request.userId).catch(() => null);
-          if (member) await member.roles.add(roleId).catch(error => console.error("Erro ao entregar FUNCIONAL_ROLE_ID:", error));
+        const role = await resolveRequestedRole(interaction.guild, request.roleLabel);
+        const member = await interaction.guild.members.fetch(request.userId).catch(() => null);
+        if (!member) {
+          await interaction.reply({ content: "Não consegui localizar o membro para setar o cargo.", ephemeral: true });
+          return;
         }
+        await member.roles.add(role);
 
         const embed = new EmbedBuilder()
           .setColor(0x2ecc71)
@@ -258,7 +327,7 @@ client.on(Events.InteractionCreate, async interaction => {
           .addFields(
             { name: "Personagem", value: updated.characterName, inline: true },
             { name: "Passaporte/ID", value: updated.passport, inline: true },
-            { name: "Funcional", value: updated.roleLabel || "Não informado", inline: true }
+            { name: "Funcional", value: `${updated.roleLabel || "Não informado"} (${role.name})`, inline: true }
           )
           .setTimestamp();
 
@@ -278,7 +347,7 @@ client.on(Events.InteractionCreate, async interaction => {
           passport: interaction.fields.getTextInputValue("passport").replace(/\D/g, "").slice(0, 10),
           characterName: interaction.fields.getTextInputValue("characterName").trim(),
           age: interaction.fields.getTextInputValue("age").replace(/\D/g, "").slice(0, 3),
-          roleLabel: interaction.fields.getTextInputValue("roleLabel").trim().toUpperCase(),
+          roleLabel: normalizeRoleLabel(interaction.fields.getTextInputValue("roleLabel")),
           authorizedBy: interaction.fields.getTextInputValue("authorizedBy").trim(),
           status: "Pendente",
           createdAt: new Date().toISOString()
