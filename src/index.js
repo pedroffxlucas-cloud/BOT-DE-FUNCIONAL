@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const http = require("node:http");
 const {
   ActionRowBuilder,
   Client,
@@ -86,6 +87,25 @@ async function log(guild, embed) {
 }
 
 const client = new Client({ intents: [] });
+
+function startHealthServer() {
+  const port = Number(process.env.PORT || 3000);
+  const server = http.createServer((request, response) => {
+    const payload = {
+      ok: true,
+      service: "funcional-rp-bot",
+      bot: client.user?.tag || "starting",
+      uptime: Math.round(process.uptime())
+    };
+
+    response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+    response.end(JSON.stringify(payload));
+  });
+
+  server.listen(port, "0.0.0.0", () => {
+    console.log(`Health server ouvindo na porta ${port}`);
+  });
+}
 
 async function registerCommands() {
   const token = cfg("DISCORD_TOKEN");
@@ -229,4 +249,5 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 });
 
+startHealthServer();
 client.login(cfg("DISCORD_TOKEN"));
