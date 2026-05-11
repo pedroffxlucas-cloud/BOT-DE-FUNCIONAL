@@ -6,14 +6,15 @@ const {
   Client,
   EmbedBuilder,
   Events,
+  GatewayIntentBits,
   ModalBuilder,
   PermissionFlagsBits,
   StringSelectMenuBuilder,
   TextInputBuilder,
   TextInputStyle
 } = require("discord.js");
-
 const { REST, Routes } = require("discord.js");
+
 const { commandPayload } = require("./commands");
 const { createRequest, findLatestByUser, findRequest, updateRequest } = require("./storage");
 const { approvalPayload, closedComponents, panelPayload } = require("./ui");
@@ -32,6 +33,10 @@ function optional(name) {
   return value;
 }
 
+function publicError(error) {
+  return String(error?.message || error || "erro desconhecido").slice(0, 1400);
+}
+
 function requestId() {
   return `FUNC-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 900 + 100)}`;
 }
@@ -39,26 +44,6 @@ function requestId() {
 function canReview(member) {
   const roleId = optional("DELEGADO_ROLE_ID");
   return Boolean((roleId && member.roles.cache.has(roleId)) || member.permissions.has(PermissionFlagsBits.ManageGuild));
-}
-
-function requestModal() {
-  return new ModalBuilder()
-    .setCustomId("funcional:submit")
-    .setTitle("Se registrando...")
-    .addComponents(
-      new ActionRowBuilder().addComponents(new TextInputBuilder()
-        .setCustomId("passport").setLabel("Qual seu passaporte (ID)?").setPlaceholder("ID do seu personagem na cidade")
-        .setRequired(true).setMaxLength(10).setStyle(TextInputStyle.Short)),
-      new ActionRowBuilder().addComponents(new TextInputBuilder()
-        .setCustomId("characterName").setLabel("Nome e sobrenome do personagem").setPlaceholder("Nome Sobrenome")
-        .setRequired(true).setMaxLength(60).setStyle(TextInputStyle.Short)),
-      new ActionRowBuilder().addComponents(new TextInputBuilder()
-        .setCustomId("age").setLabel("Idade do personagem").setPlaceholder("32")
-        .setRequired(true).setMaxLength(3).setStyle(TextInputStyle.Short)),
-      new ActionRowBuilder().addComponents(new TextInputBuilder()
-        .setCustomId("authorizedBy").setLabel("Quem autorizou sua funcional?").setPlaceholder("Nome do delegado/responsável")
-        .setRequired(true).setMaxLength(60).setStyle(TextInputStyle.Short))
-    );
 }
 
 function configuredFunctionalRoles() {
@@ -72,10 +57,58 @@ function configuredFunctionalRoles() {
     .filter(Boolean);
 }
 
+function requestModal() {
+  return new ModalBuilder()
+    .setCustomId("funcional:submit")
+    .setTitle("Se registrando...")
+    .addComponents(
+      new ActionRowBuilder().addComponents(new TextInputBuilder()
+        .setCustomId("passport")
+        .setLabel("Qual seu passaporte (ID)?")
+        .setPlaceholder("ID do seu personagem na cidade")
+        .setRequired(true)
+        .setMaxLength(10)
+        .setStyle(TextInputStyle.Short)),
+      new ActionRowBuilder().addComponents(new TextInputBuilder()
+        .setCustomId("characterName")
+        .setLabel("Nome e sobrenome do personagem")
+        .setPlaceholder("Nome Sobrenome")
+        .setRequired(true)
+        .setMaxLength(60)
+        .setStyle(TextInputStyle.Short)),
+      new ActionRowBuilder().addComponents(new TextInputBuilder()
+        .setCustomId("age")
+        .setLabel("Idade do personagem")
+        .setPlaceholder("32")
+        .setRequired(true)
+        .setMaxLength(3)
+        .setStyle(TextInputStyle.Short)),
+      new ActionRowBuilder().addComponents(new TextInputBuilder()
+        .setCustomId("authorizedBy")
+        .setLabel("Quem autorizou sua funcional?")
+        .setPlaceholder("Nome do delegado/responsável")
+        .setRequired(true)
+        .setMaxLength(60)
+        .setStyle(TextInputStyle.Short))
+    );
+}
+
+function denyModal(id) {
+  return new ModalBuilder()
+    .setCustomId(`funcional:deny-submit:${id}`)
+    .setTitle("Reprovar funcional")
+    .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder()
+      .setCustomId("reason")
+      .setLabel("Motivo da reprovação")
+      .setPlaceholder("Explique o motivo")
+      .setRequired(true)
+      .setMaxLength(500)
+      .setStyle(TextInputStyle.Paragraph)));
+}
+
 async function roleSelectPayload(guild) {
   await guild.roles.fetch();
-  const configured = configuredFunctionalRoles();
-  const roles = configured
+  const roles = configuredFunctionalRoles()
     .map(item => ({ ...item, role: guild.roles.cache.get(item.id) }))
     .filter(item => item.role && !item.role.managed && item.role.id !== guild.id);
 
@@ -103,15 +136,6 @@ async function roleSelectPayload(guild) {
   };
 }
 
-function denyModal(id) {
-  return new ModalBuilder()
-    .setCustomId(`funcional:deny-submit:${id}`)
-    .setTitle("Reprovar funcional")
-    .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder()
-      .setCustomId("reason").setLabel("Motivo da reprovação").setPlaceholder("Explique o motivo")
-      .setRequired(true).setMaxLength(500).setStyle(TextInputStyle.Paragraph)));
-}
-
 async function dm(userId, content) {
   try {
     const user = await client.users.fetch(userId);
@@ -126,7 +150,7 @@ async function log(guild, embed) {
   if (channel?.isTextBased()) await channel.send({ embeds: [embed] });
 }
 
-const client = new Client({ intents: [] });
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 function startHealthServer() {
   const port = Number(process.env.PORT || 3000);
@@ -137,7 +161,6 @@ function startHealthServer() {
       bot: client.user?.tag || "starting",
       uptime: Math.round(process.uptime())
     };
-
     response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
     response.end(JSON.stringify(payload));
   });
@@ -148,12 +171,20 @@ function startHealthServer() {
 }
 
 async function registerCommands() {
-  const token = cfg("DISCORD_TOKEN");
-  const clientId = cfg("CLIENT_ID");
-  const guildId = cfg("GUILD_ID");
-  const rest = new REST({ version: "10" }).setToken(token);
-  await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commandPayload() });
+  const rest = new REST({ version: "10" }).setToken(cfg("DISCORD_TOKEN"));
+  await rest.put(Routes.applicationGuildCommands(cfg("CLIENT_ID"), cfg("GUILD_ID")), { body: commandPayload() });
   console.log("Slash commands registrados/atualizados.");
+}
+
+async function editApprovalMessage(interaction, request, embed, components) {
+  const channel = await interaction.guild.channels.fetch(request.approvalChannelId).catch(() => null);
+  const message = channel?.isTextBased()
+    ? await channel.messages.fetch(request.approvalMessageId).catch(() => null)
+    : null;
+
+  if (message) {
+    await message.edit({ embeds: [embed], components });
+  }
 }
 
 client.once(Events.ClientReady, bot => {
@@ -184,11 +215,13 @@ client.on(Events.InteractionCreate, async interaction => {
       if (interaction.commandName === "minha-funcional") {
         const request = await findLatestByUser(interaction.user.id);
         await interaction.reply({
-          content: request ? `Pedido **${request.id}** | Status: **${request.status}**${request.reviewReason ? `\nMotivo: ${request.reviewReason}` : ""}` : "Você ainda não tem pedido registrado.",
+          content: request
+            ? `Pedido **${request.id}** | Status: **${request.status}**${request.reviewReason ? `\nMotivo: ${request.reviewReason}` : ""}`
+            : "Você ainda não tem pedido registrado.",
           ephemeral: true
         });
-        return;
       }
+      return;
     }
 
     if (interaction.isButton()) {
@@ -201,8 +234,7 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (action === "roles") {
-        const payload = await roleSelectPayload(interaction.guild);
-        await interaction.reply(payload);
+        await interaction.reply(await roleSelectPayload(interaction.guild));
         return;
       }
 
@@ -220,26 +252,40 @@ client.on(Events.InteractionCreate, async interaction => {
           await interaction.reply({ content: "Apenas delegado/cargo autorizado pode aprovar.", ephemeral: true });
           return;
         }
+
         const request = await findRequest(id);
         if (!request || request.status !== "Pendente") {
           await interaction.reply({ content: "Pedido inexistente ou já analisado.", ephemeral: true });
           return;
         }
 
-        const updated = await updateRequest(id, { status: "Aprovado", reviewedBy: interaction.user.id, reviewReason: "Aprovado pelo delegado" });
-        const member = await interaction.guild.members.fetch(request.userId).catch(() => null);
+        const updated = await updateRequest(id, {
+          status: "Aprovado",
+          reviewedBy: interaction.user.id,
+          reviewReason: "Aprovado pelo delegado"
+        });
+
         const roleId = optional("FUNCIONAL_ROLE_ID");
-        if (member && roleId) await member.roles.add(roleId).catch(() => null);
+        if (roleId) {
+          const member = await interaction.guild.members.fetch(request.userId).catch(() => null);
+          if (member) await member.roles.add(roleId).catch(error => console.error("Erro ao entregar FUNCIONAL_ROLE_ID:", error));
+        }
 
         const embed = new EmbedBuilder()
-          .setColor(0x2ecc71).setTitle("Funcional aprovada")
+          .setColor(0x2ecc71)
+          .setTitle("Funcional aprovada")
           .setDescription(`Pedido **${updated.id}** aprovado por <@${interaction.user.id}>.`)
-          .addFields({ name: "Personagem", value: updated.characterName, inline: true }, { name: "Passaporte/ID", value: updated.passport, inline: true })
+          .addFields(
+            { name: "Personagem", value: updated.characterName, inline: true },
+            { name: "Passaporte/ID", value: updated.passport, inline: true }
+          )
           .setTimestamp();
+
         await interaction.update({ embeds: [embed], components: closedComponents(id, true) });
         await dm(request.userId, `Sua funcional foi **aprovada**. Pedido: ${updated.id}`);
         await log(interaction.guild, embed);
       }
+      return;
     }
 
     if (interaction.isModalSubmit()) {
@@ -261,6 +307,7 @@ client.on(Events.InteractionCreate, async interaction => {
           await interaction.reply({ content: "Canal de aprovação não encontrado.", ephemeral: true });
           return;
         }
+
         const message = await channel.send(approvalPayload(request));
         await updateRequest(request.id, { approvalMessageId: message.id, approvalChannelId: channel.id });
         await interaction.reply({ content: `Pedido enviado. Protocolo: **${request.id}**`, ephemeral: true });
@@ -274,21 +321,35 @@ client.on(Events.InteractionCreate, async interaction => {
           await interaction.reply({ content: "Pedido inexistente ou já analisado.", ephemeral: true });
           return;
         }
+
         const reason = interaction.fields.getTextInputValue("reason").trim();
-        const updated = await updateRequest(id, { status: "Reprovado", reviewedBy: interaction.user.id, reviewReason: reason });
+        const updated = await updateRequest(id, {
+          status: "Reprovado",
+          reviewedBy: interaction.user.id,
+          reviewReason: reason
+        });
+
         const embed = new EmbedBuilder()
-          .setColor(0xe74c3c).setTitle("Funcional reprovada")
+          .setColor(0xe74c3c)
+          .setTitle("Funcional reprovada")
           .setDescription(`Pedido **${updated.id}** reprovado por <@${interaction.user.id}>.`)
-          .addFields({ name: "Personagem", value: updated.characterName, inline: true }, { name: "Motivo", value: reason })
+          .addFields(
+            { name: "Personagem", value: updated.characterName, inline: true },
+            { name: "Motivo", value: reason }
+          )
           .setTimestamp();
-        await interaction.update({ embeds: [embed], components: closedComponents(id, false) });
+
+        await editApprovalMessage(interaction, request, embed, closedComponents(id, false));
+        await interaction.reply({ content: `Pedido **${updated.id}** reprovado.`, ephemeral: true });
         await dm(request.userId, `Sua funcional foi **reprovada**. Pedido: ${updated.id}\nMotivo: ${reason}`);
         await log(interaction.guild, embed);
       }
+      return;
     }
 
     if (interaction.isStringSelectMenu()) {
       if (interaction.customId !== "funcional:role-select") return;
+
       const roleId = interaction.values[0];
       const role = await interaction.guild.roles.fetch(roleId).catch(() => null);
       if (!role || role.managed || role.id === interaction.guild.id) {
@@ -296,28 +357,33 @@ client.on(Events.InteractionCreate, async interaction => {
         return;
       }
 
-      const configured = configuredFunctionalRoles();
-      if (!configured.some(item => item.id === role.id)) {
+      if (!configuredFunctionalRoles().some(item => item.id === role.id)) {
         await interaction.reply({ content: "Esse cargo não está configurado para funcional.", ephemeral: true });
         return;
       }
 
-      const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+      const member = interaction.member;
       if (!member) {
         await interaction.reply({ content: "Não consegui localizar seu usuário no servidor.", ephemeral: true });
         return;
       }
 
-      await member.roles.add(role).catch(async () => {
-        await interaction.reply({ content: "Não consegui setar esse cargo. Deixe o cargo do bot acima dele e dê permissão de Gerenciar Cargos.", ephemeral: true });
-      });
+      try {
+        await member.roles.add(role);
+      } catch (error) {
+        console.error("Erro ao setar cargo:", error);
+        await interaction.reply({
+          content: `Não consegui setar esse cargo.\nMotivo: \`${publicError(error)}\`\nConfira se o cargo do bot está acima desse cargo e se ele tem permissão **Gerenciar Cargos**.`,
+          ephemeral: true
+        });
+        return;
+      }
 
-      if (interaction.replied) return;
       await interaction.reply({ content: `Cargo ${role} setado com sucesso.`, ephemeral: true });
     }
   } catch (error) {
     console.error(error);
-    const payload = { content: "Erro ao processar essa acao. Veja o console do bot.", ephemeral: true };
+    const payload = { content: `Erro ao processar essa ação:\n\`${publicError(error)}\``, ephemeral: true };
     if (interaction.replied || interaction.deferred) await interaction.followUp(payload).catch(() => null);
     else await interaction.reply(payload).catch(() => null);
   }
