@@ -7,12 +7,24 @@ function optionalUrl(name) {
 }
 
 function panelPayload() {
+  const title = process.env.PANEL_TITLE || "Painel de Funcional";
+  const org = process.env.PANEL_ORG || "Departamento Civil da Cidade";
+
   const embed = new EmbedBuilder()
-    .setColor(0x232428)
-    .setTitle((process.env.PANEL_TITLE || "Painel de Funcional").toUpperCase())
-    .setDescription("Solicite sua funcional atraves do painel. Clique no botao abaixo e comece sua jornada dentro da corporacao.")
-    .addFields({ name: "Aviso", value: "Formulario ficticio para jogo/servidor privado. Nao envie senha nem dados reais." })
-    .setFooter({ text: process.env.PANEL_ORG || "Departamento Civil da Cidade" })
+    .setColor(0x0f8f4a)
+    .setAuthor({ name: `${org} APP` })
+    .setTitle(title.toUpperCase())
+    .setDescription([
+      "Solicite sua funcional atraves do painel.",
+      "Clique no botao abaixo, preencha o formulario e aguarde a analise do delegado civil.",
+      "",
+      "**Aviso:** formulario ficticio para jogo/servidor privado. Nao envie senha, documento real ou informacao confidencial."
+    ].join("\n"))
+    .addFields(
+      { name: "Canal de analise", value: "O pedido sera enviado automaticamente para o canal do delegado.", inline: false },
+      { name: "Resultado", value: "Aprovado ou reprovado por botoes no painel administrativo.", inline: false }
+    )
+    .setFooter({ text: "Funcional sem validade real - uso imersivo" })
     .setTimestamp();
 
   const links = [

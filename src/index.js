@@ -11,6 +11,8 @@ const {
   TextInputStyle
 } = require("discord.js");
 
+const { REST, Routes } = require("discord.js");
+const { commandPayload } = require("./commands");
 const { createRequest, findLatestByUser, findRequest, updateRequest } = require("./storage");
 const { approvalPayload, closedComponents, panelPayload } = require("./ui");
 
@@ -85,8 +87,18 @@ async function log(guild, embed) {
 
 const client = new Client({ intents: [] });
 
+async function registerCommands() {
+  const token = cfg("DISCORD_TOKEN");
+  const clientId = cfg("CLIENT_ID");
+  const guildId = cfg("GUILD_ID");
+  const rest = new REST({ version: "10" }).setToken(token);
+  await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commandPayload() });
+  console.log("Slash commands registrados/atualizados.");
+}
+
 client.once(Events.ClientReady, bot => {
   console.log(`Bot online como ${bot.user.tag}`);
+  registerCommands().catch(error => console.error("Erro ao registrar comandos:", error.message || error));
 });
 
 client.on(Events.InteractionCreate, async interaction => {
