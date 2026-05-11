@@ -119,7 +119,16 @@ async function resolveRequestedRole(guild, roleLabel) {
 
   const role = await guild.roles.fetch(found.id).catch(() => null);
   if (!role) throw new Error(`Cargo da funcional "${found.label}" não encontrado. Confira FUNCTIONAL_ROLES.`);
-  if (!role.editable) throw new Error(`Não consigo setar "${role.name}". Coloque o cargo do bot acima dele e dê permissão Gerenciar Cargos.`);
+  if (!role.editable) {
+    const botMember = guild.members.me || await guild.members.fetchMe().catch(() => null);
+    const botTopRole = botMember?.roles.highest;
+    throw new Error([
+      `Não consigo setar "${role.name}".`,
+      `Cargo mais alto do bot: "${botTopRole?.name || "não localizado"}" (posição ${botTopRole?.position ?? "?"}).`,
+      `Cargo alvo: "${role.name}" (posição ${role.position}).`,
+      "No Discord, arraste o cargo do bot para ficar ACIMA desse cargo. Administrador não ignora hierarquia de cargos."
+    ].join(" "));
+  }
   return role;
 }
 
