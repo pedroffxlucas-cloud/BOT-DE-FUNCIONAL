@@ -19,7 +19,6 @@ const {
   createBoletim,
   createFichaProcurado,
   createRequest,
-  findLatestByUser,
   findLatestByUserType,
   findRequest,
   updateRequest
@@ -229,6 +228,16 @@ function boletimDm(request) {
   ].join("\n");
 }
 
+function funcionalRecebidaDm(request) {
+  return [
+    "**Solicitação de funcional recebida.**",
+    `Protocolo: **${request.id}**`,
+    "",
+    "Seu pedido foi enviado para análise da autoridade responsável.",
+    "Você receberá uma mensagem aqui quando for aprovado ou reprovado."
+  ].join("\n");
+}
+
 async function sendBoletimToUser(userId, number) {
   const request = await createBoletim(userId, number);
   await dm(userId, boletimDm(request));
@@ -423,7 +432,7 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (interaction.commandName === "minha-funcional") {
-        const request = await findLatestByUser(interaction.user.id);
+        const request = await findLatestByUserType(interaction.user.id, "funcional");
         await interaction.reply({
           content: request
             ? `Pedido **${request.id}** | Status: **${request.status}**${request.reviewReason ? `\nMotivo: ${request.reviewReason}` : ""}`
@@ -507,12 +516,6 @@ client.on(Events.InteractionCreate, async interaction => {
           return;
         }
 
-        const updated = await updateRequest(id, {
-          status: "Aprovado",
-          reviewedBy: interaction.user.id,
-          reviewReason: "Aprovado pelo delegado"
-        });
-
         const role = await resolveRequestedRole(interaction.guild, request.roleLabel);
         const member = await interaction.guild.members.fetch(request.userId).catch(() => null);
         if (!member) {
@@ -520,6 +523,12 @@ client.on(Events.InteractionCreate, async interaction => {
           return;
         }
         await member.roles.add(role);
+
+        const updated = await updateRequest(id, {
+          status: "Aprovado",
+          reviewedBy: interaction.user.id,
+          reviewReason: "Aprovado pelo delegado"
+        });
 
         const embed = new EmbedBuilder()
           .setColor(0x2ecc71)
@@ -545,6 +554,7 @@ client.on(Events.InteractionCreate, async interaction => {
           id: requestId(),
           userId: interaction.user.id,
           guildId: interaction.guildId,
+          type: "funcional",
           passport: interaction.fields.getTextInputValue("passport").replace(/\D/g, "").slice(0, 10),
           characterName: interaction.fields.getTextInputValue("characterName").trim(),
           age: interaction.fields.getTextInputValue("age").replace(/\D/g, "").slice(0, 3),
@@ -562,16 +572,16 @@ client.on(Events.InteractionCreate, async interaction => {
 
         const message = await channel.send(approvalPayload(request));
         await updateRequest(request.id, { approvalMessageId: message.id, approvalChannelId: channel.id });
-        const dmSent = await dm(request.userId, boletimDm(request));
+        const dmSent = await dm(request.userId, funcionalRecebidaDm(request));
         if (!dmSent) {
           await channel.send({
-            content: `Aviso: não consegui enviar DM para <@${request.userId}>. Número do boletim: **${request.id}**`
+            content: `Aviso: não consegui enviar DM para <@${request.userId}>. Protocolo da funcional: **${request.id}**`
           }).catch(() => null);
         }
         await interaction.reply({
           content: dmSent
-            ? `Pedido enviado. Número do boletim de ocorrência: **${request.id}**. Enviei o acompanhamento no seu privado.`
-            : `Pedido enviado. Número do boletim de ocorrência: **${request.id}**.\nNão consegui enviar no seu privado. Ative mensagens diretas de membros do servidor ou me chame no privado e tente novamente.`,
+            ? `Pedido enviado. Protocolo da funcional: **${request.id}**. Aguarde a análise do delegado.`
+            : `Pedido enviado. Protocolo da funcional: **${request.id}**.\nNão consegui enviar no seu privado. Ative mensagens diretas de membros do servidor ou me chame no privado e tente novamente.`,
           ephemeral: true
         });
         return;
