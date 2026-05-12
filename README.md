@@ -50,6 +50,16 @@ No Discord, arraste o cargo do bot para ficar acima de `AGENTE DHPP`, `AGENTE GE
 
 O bot deve ser criado como `Background Worker`, porque ele fica conectado ao Discord e nao precisa abrir uma porta HTTP.
 
+Se estiver usando `Web Service` no plano gratuito, ele pode dormir depois de um tempo sem requisições. Para reduzir isso, cadastre a URL do serviço em um monitor externo como UptimeRobot, Better Stack ou Cron-job.org, pingando a cada 5 minutos.
+
+Exemplo:
+
+- URL: `https://SEU-SERVICO.onrender.com/`
+- Intervalo: 5 minutos
+- Método: GET
+
+Para ficar realmente 24/7 sem depender de ping externo, use `Background Worker`/instância paga ou outro host que não durma.
+
 Configuracao manual:
 
 - Root Directory: `portal-cidadao-seguro/discord-funcional-bot`
