@@ -198,12 +198,11 @@ async function dm(userId, content) {
 function boletimDm(request) {
   const url = optional("DELEGACIA_URL") || "https://portal-pc-508e2.web.app/delegacia-eletronica.html";
   return [
-    "**Boletim registrado com sucesso.**",
-    `Número do boletim: **${request.id}**`,
-    `Personagem: **${request.characterName}**`,
-    `Funcional solicitada: **${request.roleLabel || "Não informada"}**`,
+    "**Boletim de ocorrência registrado.**",
+    `Número do boletim de ocorrência: **${request.id}**`,
     "",
-    `Delegacia Eletrônica: ${url}`
+    "Acompanhe a ocorrência pelo site:",
+    url
   ].join("\n");
 }
 
