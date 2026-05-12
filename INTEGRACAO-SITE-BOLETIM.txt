@@ -1,0 +1,69 @@
+INTEGRACAO DO SITE COM O BOT DE BOLETIM
+
+1. CRIAR O ARQUIVO .env NO SITE
+
+Coloque isto no arquivo .env do site:
+
+BOT_API_URL=https://bot-de-funcional.onrender.com/boletim
+BOT_API_TOKEN=COLOQUE_AQUI_O_MESMO_TOKEN_DO_RENDER
+
+O valor de BOT_API_TOKEN precisa ser igual ao valor BOLETIM_API_TOKEN configurado no Render do bot.
+
+Exemplo:
+
+BOT_API_TOKEN=pcguarulhos_boletim_2026
+
+No Render do bot:
+
+BOLETIM_API_TOKEN=pcguarulhos_boletim_2026
+
+
+2. O SITE PRECISA TER ESTES DADOS
+
+discordId = ID do Discord da pessoa que abriu o boletim
+numero = numero do boletim de ocorrencia gerado pelo site
+
+Sem discordId, o bot nao sabe para quem enviar a mensagem privada.
+
+
+3. CODIGO PARA COLOCAR NO BACKEND DO SITE
+
+async function enviarBoletimParaBot(discordIdDaPessoa, numeroDoBoletim) {
+  const resposta = await fetch(process.env.BOT_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      token: process.env.BOT_API_TOKEN,
+      discordId: discordIdDaPessoa,
+      numero: numeroDoBoletim
+    })
+  });
+
+  if (!resposta.ok) {
+    const erro = await resposta.text();
+    throw new Error("Erro ao enviar boletim para o bot: " + erro);
+  }
+
+  return resposta.json();
+}
+
+
+4. COMO USAR DEPOIS QUE O SITE GERAR O BOLETIM
+
+const numeroDoBoletim = "BO-2026-000123";
+const discordIdDaPessoa = "123456789012345678";
+
+await enviarBoletimParaBot(discordIdDaPessoa, numeroDoBoletim);
+
+
+5. RESULTADO
+
+O bot vai enviar no privado da pessoa:
+
+Boletim de ocorrencia registrado.
+Numero do boletim de ocorrencia: BO-2026-000123
+
+Acompanhe a ocorrencia pelo site:
+https://portal-pc-508e2.web.app/delegacia-eletronica.html
