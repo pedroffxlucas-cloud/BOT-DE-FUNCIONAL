@@ -31,6 +31,16 @@ async function findLatestByUser(userId) {
   return (await allRequests()).find(item => item.userId === userId) || null;
 }
 
+async function createBoletim(userId, number) {
+  return createRequest({
+    id: String(number).trim().toUpperCase(),
+    userId,
+    type: "boletim-site",
+    status: "Registrado",
+    createdAt: new Date().toISOString()
+  });
+}
+
 async function updateRequest(id, patch) {
   const items = await allRequests();
   const index = items.findIndex(item => item.id === id);
@@ -40,4 +50,4 @@ async function updateRequest(id, patch) {
   return items[index];
 }
 
-module.exports = { createRequest, findLatestByUser, findRequest, updateRequest };
+module.exports = { createBoletim, createRequest, findLatestByUser, findRequest, updateRequest };

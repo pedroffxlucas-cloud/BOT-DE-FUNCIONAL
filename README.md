@@ -29,6 +29,22 @@ npm.cmd start
 - `FUNCTIONAL_ROLES`: funcionais/cargos aceitos no formulário, no formato `DHPP:id,GER:id,PCESP:id`.
 - `LOG_CHANNEL_ID`: canal de logs, opcional.
 - `DELEGACIA_URL`: link da Delegacia Eletrônica enviado por DM junto com o número do boletim.
+- `BOLETIM_API_TOKEN`: token opcional para uma integração externa enviar boletim para o bot.
+
+O bot não consegue descobrir sozinho quem gerou BO em um site que não envia dados para ele. Para integração automática, o site precisa chamar:
+
+```http
+POST /boletim
+Content-Type: application/json
+
+{
+  "token": "BOLETIM_API_TOKEN",
+  "discordId": "ID_DO_USUARIO_DISCORD",
+  "numero": "NUMERO_DO_BOLETIM"
+}
+```
+
+Se o site não puder ser alterado, o usuário pode usar `/registrar-boletim numero:NUMERO` no Discord para vincular o BO ao próprio perfil.
 
 Use `/painel-funcional` para enviar o painel no Discord.
 

@@ -15,7 +15,7 @@ const {
 const { REST, Routes } = require("discord.js");
 
 const { commandPayload } = require("./commands");
-const { createRequest, findLatestByUser, findRequest, updateRequest } = require("./storage");
+const { createBoletim, createRequest, findLatestByUser, findRequest, updateRequest } = require("./storage");
 const { approvalPayload, closedComponents, panelPayload } = require("./ui");
 
 function cfg(name) {
@@ -210,6 +210,12 @@ function boletimDm(request) {
   ].join("\n");
 }
 
+async function sendBoletimToUser(userId, number) {
+  const request = await createBoletim(userId, number);
+  await dm(userId, boletimDm(request));
+  return request;
+}
+
 async function log(guild, embed) {
   const channelId = optional("LOG_CHANNEL_ID");
   if (!channelId) return;
@@ -222,6 +228,39 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 function startHealthServer() {
   const port = Number(process.env.PORT || 3000);
   const server = http.createServer((request, response) => {
+    if (request.method === "POST" && request.url === "/boletim") {
+      let raw = "";
+      request.on("data", chunk => {
+        raw += chunk;
+        if (raw.length > 10000) request.destroy();
+      });
+      request.on("end", async () => {
+        try {
+          const data = JSON.parse(raw || "{}");
+          const expectedToken = optional("BOLETIM_API_TOKEN");
+          if (expectedToken && data.token !== expectedToken) {
+            response.writeHead(401, { "content-type": "application/json; charset=utf-8" });
+            response.end(JSON.stringify({ ok: false, error: "token inválido" }));
+            return;
+          }
+
+          if (!data.discordId || !data.numero) {
+            response.writeHead(400, { "content-type": "application/json; charset=utf-8" });
+            response.end(JSON.stringify({ ok: false, error: "envie discordId e numero" }));
+            return;
+          }
+
+          const saved = await sendBoletimToUser(String(data.discordId), String(data.numero));
+          response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+          response.end(JSON.stringify({ ok: true, boletim: saved.id }));
+        } catch (error) {
+          response.writeHead(500, { "content-type": "application/json; charset=utf-8" });
+          response.end(JSON.stringify({ ok: false, error: publicError(error) }));
+        }
+      });
+      return;
+    }
+
     const payload = {
       ok: true,
       service: "funcional-rp-bot",
@@ -296,6 +335,15 @@ client.on(Events.InteractionCreate, async interaction => {
           return;
         }
         await interaction.reply({ content: boletimDm(request), ephemeral: true });
+      }
+
+      if (interaction.commandName === "registrar-boletim") {
+        const number = interaction.options.getString("numero", true).trim().toUpperCase();
+        const request = await sendBoletimToUser(interaction.user.id, number);
+        await interaction.reply({
+          content: `Boletim **${request.id}** vinculado ao seu Discord. Use /meu-boletim para consultar novamente.`,
+          ephemeral: true
+        });
       }
 
       if (interaction.commandName === "diagnostico-cargos") {

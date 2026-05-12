@@ -40,3 +40,5 @@ services:
         value: Delegacia da Polícia Civil do Estado de São Paulo
       - key: DELEGACIA_URL
         value: https://portal-pc-508e2.web.app/delegacia-eletronica.html
+      - key: BOLETIM_API_TOKEN
+        sync: false
