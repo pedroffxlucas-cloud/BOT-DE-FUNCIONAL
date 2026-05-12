@@ -10,6 +10,9 @@ function commandPayload() {
       .setName("minha-funcional")
       .setDescription("Mostra o status do seu último pedido."),
     new SlashCommandBuilder()
+      .setName("meu-boletim")
+      .setDescription("Mostra o número do seu último boletim de ocorrência."),
+    new SlashCommandBuilder()
       .setName("diagnostico-cargos")
       .setDescription("Mostra se o bot consegue setar os cargos de funcional.")
       .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)

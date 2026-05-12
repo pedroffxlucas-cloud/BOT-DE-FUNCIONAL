@@ -192,7 +192,11 @@ async function dm(userId, content) {
   try {
     const user = await client.users.fetch(userId);
     await user.send(content);
-  } catch {}
+    return true;
+  } catch (error) {
+    console.error("Falha ao enviar DM:", error);
+    return false;
+  }
 }
 
 function boletimDm(request) {
@@ -283,6 +287,15 @@ client.on(Events.InteractionCreate, async interaction => {
             : "Você ainda não tem pedido registrado.",
           ephemeral: true
         });
+      }
+
+      if (interaction.commandName === "meu-boletim") {
+        const request = await findLatestByUser(interaction.user.id);
+        if (!request) {
+          await interaction.reply({ content: "Você ainda não tem boletim registrado.", ephemeral: true });
+          return;
+        }
+        await interaction.reply({ content: boletimDm(request), ephemeral: true });
       }
 
       if (interaction.commandName === "diagnostico-cargos") {
@@ -388,8 +401,18 @@ client.on(Events.InteractionCreate, async interaction => {
 
         const message = await channel.send(approvalPayload(request));
         await updateRequest(request.id, { approvalMessageId: message.id, approvalChannelId: channel.id });
-        await dm(request.userId, boletimDm(request));
-        await interaction.reply({ content: `Pedido enviado. Protocolo: **${request.id}**`, ephemeral: true });
+        const dmSent = await dm(request.userId, boletimDm(request));
+        if (!dmSent) {
+          await channel.send({
+            content: `Aviso: não consegui enviar DM para <@${request.userId}>. Número do boletim: **${request.id}**`
+          }).catch(() => null);
+        }
+        await interaction.reply({
+          content: dmSent
+            ? `Pedido enviado. Número do boletim de ocorrência: **${request.id}**. Enviei o acompanhamento no seu privado.`
+            : `Pedido enviado. Número do boletim de ocorrência: **${request.id}**.\nNão consegui enviar no seu privado. Ative mensagens diretas de membros do servidor ou me chame no privado e tente novamente.`,
+          ephemeral: true
+        });
         return;
       }
 
