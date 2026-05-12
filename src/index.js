@@ -15,7 +15,15 @@ const {
 const { REST, Routes } = require("discord.js");
 
 const { commandPayload } = require("./commands");
-const { createBoletim, createRequest, findLatestByUser, findRequest, updateRequest } = require("./storage");
+const {
+  createBoletim,
+  createFichaProcurado,
+  createRequest,
+  findLatestByUser,
+  findLatestByUserType,
+  findRequest,
+  updateRequest
+} = require("./storage");
 const { approvalPayload, closedComponents, panelPayload } = require("./ui");
 
 function cfg(name) {
@@ -199,6 +207,17 @@ async function dm(userId, content) {
   }
 }
 
+async function dmPayload(userId, payload) {
+  try {
+    const user = await client.users.fetch(userId);
+    await user.send(payload);
+    return true;
+  } catch (error) {
+    console.error("Falha ao enviar DM:", error);
+    return false;
+  }
+}
+
 function boletimDm(request) {
   const url = optional("DELEGACIA_URL") || "https://portal-pc-508e2.web.app/delegacia-eletronica.html";
   return [
@@ -214,6 +233,54 @@ async function sendBoletimToUser(userId, number) {
   const request = await createBoletim(userId, number);
   await dm(userId, boletimDm(request));
   return request;
+}
+
+function fichaProcuradoEmbed(request) {
+  const embed = new EmbedBuilder()
+    .setColor(request.status === "Procurado" ? 0xf1c40f : 0xc0392b)
+    .setTitle("Ficha de procurado")
+    .setDescription("Registro ficcional da cidade para acompanhamento da ocorrência.")
+    .addFields(
+      { name: "Número da ficha", value: request.id, inline: true },
+      { name: "Status", value: request.status || "Preso", inline: true },
+      { name: "Identificação", value: request.nome || "Não informado", inline: false },
+      { name: "Passaporte/ID", value: request.passaporte || "Não informado", inline: true },
+      { name: "Ocorrência", value: request.motivo || "Ocorrência registrada", inline: false },
+      { name: "Autoridade responsável", value: request.autorizadoPor || "Autoridade policial", inline: false }
+    )
+    .setFooter({ text: "Ambiente imersivo/ficcional. Não é órgão público real." })
+    .setTimestamp(new Date(request.createdAt || Date.now()));
+
+  if (request.observacoes) {
+    embed.addFields({ name: "Observações", value: request.observacoes.slice(0, 1000), inline: false });
+  }
+
+  if (/^https?:\/\//i.test(request.fotoUrl || "")) {
+    embed.setThumbnail(request.fotoUrl);
+  }
+
+  return embed;
+}
+
+async function sendFichaProcurado(data) {
+  const request = await createFichaProcurado(data);
+  const embed = fichaProcuradoEmbed(request);
+  const dmSent = await dmPayload(request.userId, {
+    content: "Sua ficha foi registrada no sistema da cidade.",
+    embeds: [embed]
+  });
+
+  const guildId = optional("GUILD_ID");
+  const guild = guildId ? await client.guilds.fetch(guildId).catch(() => null) : null;
+  const channelId = optional("PROCURADO_CHANNEL_ID") || optional("LOG_CHANNEL_ID");
+  if (guild && channelId) {
+    const channel = await guild.channels.fetch(channelId).catch(() => null);
+    if (channel?.isTextBased()) {
+      await channel.send({ content: `<@${request.userId}>`, embeds: [embed] }).catch(() => null);
+    }
+  }
+
+  return { request, dmSent };
 }
 
 async function log(guild, embed) {
@@ -253,6 +320,43 @@ function startHealthServer() {
           const saved = await sendBoletimToUser(String(data.discordId), String(data.numero));
           response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
           response.end(JSON.stringify({ ok: true, boletim: saved.id }));
+        } catch (error) {
+          response.writeHead(500, { "content-type": "application/json; charset=utf-8" });
+          response.end(JSON.stringify({ ok: false, error: publicError(error) }));
+        }
+      });
+      return;
+    }
+
+    if (request.method === "POST" && request.url === "/procurado") {
+      let raw = "";
+      request.on("data", chunk => {
+        raw += chunk;
+        if (raw.length > 25000) request.destroy();
+      });
+      request.on("end", async () => {
+        try {
+          const data = JSON.parse(raw || "{}");
+          const expectedToken = optional("FICHA_API_TOKEN") || optional("BOLETIM_API_TOKEN");
+          if (expectedToken && data.token !== expectedToken) {
+            response.writeHead(401, { "content-type": "application/json; charset=utf-8" });
+            response.end(JSON.stringify({ ok: false, error: "token invalido" }));
+            return;
+          }
+
+          if (!data.discordId) {
+            response.writeHead(400, { "content-type": "application/json; charset=utf-8" });
+            response.end(JSON.stringify({ ok: false, error: "envie discordId" }));
+            return;
+          }
+
+          const saved = await sendFichaProcurado(data);
+          response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+          response.end(JSON.stringify({
+            ok: true,
+            ficha: saved.request.id,
+            dmEnviada: saved.dmSent
+          }));
         } catch (error) {
           response.writeHead(500, { "content-type": "application/json; charset=utf-8" });
           response.end(JSON.stringify({ ok: false, error: publicError(error) }));
@@ -329,12 +433,21 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (interaction.commandName === "meu-boletim") {
-        const request = await findLatestByUser(interaction.user.id);
+        const request = await findLatestByUserType(interaction.user.id, "boletim-site");
         if (!request) {
           await interaction.reply({ content: "Você ainda não tem boletim registrado.", ephemeral: true });
           return;
         }
         await interaction.reply({ content: boletimDm(request), ephemeral: true });
+      }
+
+      if (interaction.commandName === "minha-ficha") {
+        const request = await findLatestByUserType(interaction.user.id, "ficha-procurado");
+        if (!request) {
+          await interaction.reply({ content: "Você ainda não tem ficha registrada.", ephemeral: true });
+          return;
+        }
+        await interaction.reply({ embeds: [fichaProcuradoEmbed(request)], ephemeral: true });
       }
 
       if (interaction.commandName === "registrar-boletim") {

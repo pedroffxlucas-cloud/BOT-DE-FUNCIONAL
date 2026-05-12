@@ -13,6 +13,9 @@ function commandPayload() {
       .setName("meu-boletim")
       .setDescription("Mostra o número do seu último boletim de ocorrência."),
     new SlashCommandBuilder()
+      .setName("minha-ficha")
+      .setDescription("Mostra sua última ficha de procurado ou prisão."),
+    new SlashCommandBuilder()
       .setName("registrar-boletim")
       .setDescription("Vincula um número de boletim ao seu Discord.")
       .addStringOption(option =>

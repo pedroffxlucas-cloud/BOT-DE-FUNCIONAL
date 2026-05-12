@@ -1,5 +1,5 @@
 services:
-  - type: worker
+  - type: web
     name: funcional-rp-bot
     runtime: node
     plan: free
@@ -41,4 +41,8 @@ services:
       - key: DELEGACIA_URL
         value: https://portal-pc-508e2.web.app/delegacia-eletronica.html
       - key: BOLETIM_API_TOKEN
+        sync: false
+      - key: FICHA_API_TOKEN
+        sync: false
+      - key: PROCURADO_CHANNEL_ID
         sync: false

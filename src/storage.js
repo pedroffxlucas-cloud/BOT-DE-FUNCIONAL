@@ -31,12 +31,33 @@ async function findLatestByUser(userId) {
   return (await allRequests()).find(item => item.userId === userId) || null;
 }
 
+async function findLatestByUserType(userId, type) {
+  return (await allRequests()).find(item => item.userId === userId && item.type === type) || null;
+}
+
 async function createBoletim(userId, number) {
   return createRequest({
     id: String(number).trim().toUpperCase(),
     userId,
     type: "boletim-site",
     status: "Registrado",
+    createdAt: new Date().toISOString()
+  });
+}
+
+async function createFichaProcurado(data) {
+  const generatedId = `PROC-${Date.now().toString(36).toUpperCase()}`;
+  return createRequest({
+    id: String(data.numero || generatedId).trim().toUpperCase(),
+    userId: String(data.discordId || data.userId || "").trim(),
+    type: "ficha-procurado",
+    status: data.status || "Preso",
+    nome: String(data.nome || "Não informado").trim(),
+    passaporte: String(data.passaporte || data.idCidade || data.cpf || "Não informado").trim(),
+    motivo: String(data.motivo || data.crime || "Ocorrência registrada").trim(),
+    autorizadoPor: String(data.autorizadoPor || data.presopor || data.presoPor || data.agente || "Autoridade policial").trim(),
+    fotoUrl: String(data.fotoUrl || data.foto || data.avatarUrl || "").trim(),
+    observacoes: String(data.observacoes || data.obs || "").trim(),
     createdAt: new Date().toISOString()
   });
 }
@@ -50,4 +71,12 @@ async function updateRequest(id, patch) {
   return items[index];
 }
 
-module.exports = { createBoletim, createRequest, findLatestByUser, findRequest, updateRequest };
+module.exports = {
+  createBoletim,
+  createFichaProcurado,
+  createRequest,
+  findLatestByUser,
+  findLatestByUserType,
+  findRequest,
+  updateRequest
+};
