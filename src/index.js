@@ -195,6 +195,18 @@ async function dm(userId, content) {
   } catch {}
 }
 
+function boletimDm(request) {
+  const url = optional("DELEGACIA_URL") || "https://portal-pc-508e2.web.app/delegacia-eletronica.html";
+  return [
+    "**Boletim registrado com sucesso.**",
+    `Número do boletim: **${request.id}**`,
+    `Personagem: **${request.characterName}**`,
+    `Funcional solicitada: **${request.roleLabel || "Não informada"}**`,
+    "",
+    `Delegacia Eletrônica: ${url}`
+  ].join("\n");
+}
+
 async function log(guild, embed) {
   const channelId = optional("LOG_CHANNEL_ID");
   if (!channelId) return;
@@ -377,6 +389,7 @@ client.on(Events.InteractionCreate, async interaction => {
 
         const message = await channel.send(approvalPayload(request));
         await updateRequest(request.id, { approvalMessageId: message.id, approvalChannelId: channel.id });
+        await dm(request.userId, boletimDm(request));
         await interaction.reply({ content: `Pedido enviado. Protocolo: **${request.id}**`, ephemeral: true });
         return;
       }

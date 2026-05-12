@@ -38,3 +38,5 @@ services:
         value: Painel de Funcional
       - key: PANEL_ORG
         value: Delegacia da Polícia Civil do Estado de São Paulo
+      - key: DELEGACIA_URL
+        value: https://portal-pc-508e2.web.app/delegacia-eletronica.html

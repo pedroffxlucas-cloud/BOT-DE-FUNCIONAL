@@ -28,6 +28,7 @@ npm.cmd start
 - `FUNCIONAL_ROLE_ID`: cargo dado automaticamente ao aprovado, opcional.
 - `FUNCTIONAL_ROLES`: funcionais/cargos aceitos no formulário, no formato `DHPP:id,GER:id,PCESP:id`.
 - `LOG_CHANNEL_ID`: canal de logs, opcional.
+- `DELEGACIA_URL`: link da Delegacia Eletrônica enviado por DM junto com o número do boletim.
 
 Use `/painel-funcional` para enviar o painel no Discord.
 
