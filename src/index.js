@@ -245,16 +245,19 @@ async function sendBoletimToUser(userId, number) {
 }
 
 function fichaProcuradoEmbed(request) {
+  const isProcurado = request.status === "Procurado";
   const embed = new EmbedBuilder()
-    .setColor(request.status === "Procurado" ? 0xf1c40f : 0xc0392b)
-    .setTitle("Ficha de procurado")
+    .setColor(isProcurado ? 0xf1c40f : 0xc0392b)
+    .setTitle(isProcurado ? "Ficha de procurado" : "Ficha criminal")
     .setDescription("Registro ficcional da cidade para acompanhamento da ocorrência.")
     .addFields(
       { name: "Número da ficha", value: request.id, inline: true },
       { name: "Status", value: request.status || "Preso", inline: true },
-      { name: "Identificação", value: request.nome || "Não informado", inline: false },
-      { name: "Passaporte/ID", value: request.passaporte || "Não informado", inline: true },
-      { name: "Ocorrência", value: request.motivo || "Ocorrência registrada", inline: false },
+      { name: "DADOS DO ACUSADO", value: "\u200b", inline: false },
+      { name: "NOME COMPLETO", value: request.nome || "Não informado", inline: false },
+      { name: "CPF", value: request.cpf || request.passaporte || "Não informado", inline: true },
+      { name: "TIPIFICAÇÃO CRIMINAL", value: request.tipificacaoCriminal || request.motivo || "Não especificado", inline: false },
+      { name: "MATERIAL APREENDIDO", value: request.materialApreendido || "Não há", inline: false },
       { name: "Autoridade responsável", value: request.autorizadoPor || "Autoridade policial", inline: false }
     )
     .setFooter({ text: "Ambiente imersivo/ficcional. Não é órgão público real." })
@@ -337,7 +340,7 @@ function startHealthServer() {
       return;
     }
 
-    if (request.method === "POST" && request.url === "/procurado") {
+    if (request.method === "POST" && ["/procurado", "/ficha-criminal"].includes(request.url)) {
       let raw = "";
       request.on("data", chunk => {
         raw += chunk;
@@ -359,6 +362,7 @@ function startHealthServer() {
             return;
           }
 
+          if (request.url === "/ficha-criminal" && !data.status) data.status = "Ficha criminal";
           const saved = await sendFichaProcurado(data);
           response.writeHead(200, { "content-type": "application/json; charset=utf-8" });
           response.end(JSON.stringify({

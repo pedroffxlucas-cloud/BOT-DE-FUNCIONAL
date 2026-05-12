@@ -1,0 +1,24 @@
+Pacote pronto para Firebase Hosting + Functions.
+
+Arquivos principais:
+- public/integracao-bot.js
+- functions/index.js
+- functions/.env.example
+
+Campos da ficha criminal:
+- discordId
+- numero
+- nomeCompleto
+- cpf
+- tipificacaoCriminal
+- materialApreendido
+- presoPor
+- fotoUrl
+- observacoes
+
+Formato enviado ao Discord:
+DADOS DO ACUSADO
+NOME COMPLETO: valor recebido ou Nao informado
+CPF: valor recebido ou Nao informado
+TIPIFICACAO CRIMINAL: valor recebido ou Nao especificado
+MATERIAL APREENDIDO: valor recebido ou Nao ha

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Integração ficha criminal</title>
+    <script src="/integracao-bot.js" defer></script>
+  </head>
+  <body>
+    <form id="ficha">
+      <input name="discordId" placeholder="ID do Discord" required>
+      <input name="numero" placeholder="Número da ficha">
+      <input name="nomeCompleto" placeholder="Nome completo">
+      <input name="cpf" placeholder="CPF/ID">
+      <input name="tipificacaoCriminal" placeholder="Tipificação criminal">
+      <input name="materialApreendido" placeholder="Material apreendido">
+      <input name="presoPor" placeholder="Responsável pela prisão">
+      <input name="fotoUrl" placeholder="URL da foto">
+      <textarea name="observacoes" placeholder="Observações"></textarea>
+      <button type="submit">Enviar ficha criminal</button>
+    </form>
+
+    <pre id="saida"></pre>
+
+    <script>
+      document.getElementById("ficha").addEventListener("submit", async event => {
+        event.preventDefault();
+        const dados = Object.fromEntries(new FormData(event.currentTarget));
+        const saida = document.getElementById("saida");
+        try {
+          const resultado = await window.enviarFichaCriminalParaDiscord(dados);
+          saida.textContent = JSON.stringify(resultado, null, 2);
+        } catch (error) {
+          saida.textContent = error.message;
+        }
+      });
+    </script>
+  </body>
+</html>

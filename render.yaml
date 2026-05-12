@@ -45,4 +45,4 @@ services:
       - key: FICHA_API_TOKEN
         sync: false
       - key: PROCURADO_CHANNEL_ID
-        sync: false
+        value: "1503478106902499368"
